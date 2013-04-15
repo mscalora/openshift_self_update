@@ -1,0 +1,43 @@
+#!/bin/bash
+{
+	if [ -f "${OPENSHIFT_DATA_DIR}.self_update_debug" ] ; then
+		set -x
+		#export
+	fi
+
+	# defaults
+	LOCAL_REPO_NAME=.self_update_repo
+	TRIGGER_NAME=.self_update_trigger
+	CONFIG_NAME=.self_update_config
+	REMOTE_REPO=https://github.com/mscalora/openshift_self_update.git
+
+	if [ -f "$OPENSHIFT_DATA_DIR$CONFIG_NAME" ] ; then
+		source "$OPENSHIFT_DATA_DIR$CONFIG_NAME"
+	fi
+
+	if [ -d "$OPENSHIFT_DATA_DIR$LOCAL_REPO_NAME" ] ; then
+		if [ ! -f "$OPENSHIFT_DATA_DIR$TRIGGER_NAME" ] ; then
+			exit 0
+		fi
+	fi
+
+	rm "$OPENSHIFT_DATA_DIR$TRIGGER_NAME" 2>/dev/null
+
+	GIT_EXPLICIT="--git-dir=$OPENSHIFT_DATA_DIR$LOCAL_REPO_NAME/.git --work-tree=$OPENSHIFT_DATA_DIR$LOCAL_REPO_NAME"
+
+	if [ ! -d "$OPENSHIFT_DATA_DIR$LOCAL_REPO_NAME" ] ; then
+		cd "$OPENSHIFT_DATA_DIR"
+		git clone "${OPENSHIFT_HOMEDIR}git/${OPENSHIFT_GEAR_NAME}.git" "$LOCAL_REPO_NAME"
+		git $GIT_EXPLICIT remote add github "$REMOTE_REPO"
+	fi
+
+	if [ -f "${OPENSHIFT_DATA_DIR}.self_update_debug" ] ; then
+		git $GIT_EXPLICIT remote -v
+		git $GIT_EXPLICIT config -l
+	fi
+
+	git $GIT_EXPLICIT pull github master
+	git $GIT_EXPLICIT reset --hard
+	git $GIT_EXPLICIT push -vf origin master
+
+} &>>"${OPENSHIFT_PHP_LOG_DIR}self_update.log" 
